@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, render_template, request, send_file, redirect, url_for
 import pandas as pd
 import numpy as np
@@ -11,11 +10,11 @@ from preprocess import DataPreprocessor, prepare_csv_df, validate_single_input
 app = Flask(__name__)
 app.secret_key = 'bean_prediction_secret_2025'
 
-# === CẤU HÌNH ===
+
 MODEL_DIR = './train/models'
 TRAIN_CSV_PATH = './train/data/X_train.csv'
 
-# Sửa lỗi chính tả: AspectRation → AspectRatio
+
 FEATURE_NAMES = [
     'Area', 'Perimeter', 'MajorAxisLength', 'MinorAxisLength', 'AspectRation',
     'Eccentricity', 'ConvexArea', 'EquivDiameter', 'Extent', 'Solidity',
@@ -42,10 +41,8 @@ for key, filename in model_mapping.items():
     else:
         print(f"[CẢNH BÁO] Không tìm thấy mô hình: {path}")
 
-# Khởi tạo preprocessor
-preprocessor = DataPreprocessor()
 
-# Fit scaler từ train.csv
+preprocessor = DataPreprocessor()
 if os.path.exists(TRAIN_CSV_PATH):
     try:
         train_df = pd.read_csv(TRAIN_CSV_PATH)
@@ -130,9 +127,6 @@ def index():
 
     return render_template('index.html', **template_data)
 
-
-# XÓA route /download vì không cần nữa (tự động tải bằng JS)
-# @app.route('/download', methods=['POST'])  → ĐÃ XÓA
 
 
 if __name__ == '__main__':
