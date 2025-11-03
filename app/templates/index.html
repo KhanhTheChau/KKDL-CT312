@@ -1,41 +1,42 @@
 <!DOCTYPE html>
 <html lang="vi">
-
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Hệ Thống Dự Đoán Phân Loại Hạt Đậu</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <script>
-        // Cấu hình Tailwind CSS: Sử dụng Font Inter và màu sắc tùy chỉnh
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        'primary': '#4f46e5', // Indigo 600
-                        'secondary': '#6366f1', // Indigo 500
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    }
+                    colors: { 'primary': '#4f46e5', 'secondary': '#6366f1' },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
                 }
             }
         }
-        
-        // Hạn chế người dùng nhập giá trị âm
+
         document.addEventListener('DOMContentLoaded', () => {
+            // Hạn chế giá trị âm
             document.querySelectorAll('input[type="number"]').forEach(input => {
                 input.addEventListener('input', (e) => {
-                    if (e.target.value < 0) {
-                        e.target.value = 0;
-                    }
+                    if (e.target.value < 0) e.target.value = 0;
                 });
             });
+
+            // Kiểm soát required
+            const csvFileInput = document.getElementById('csv_file');
+            const manualInputs = document.querySelectorAll('div[class*="grid-cols"] input[type="number"]');
+
+            function toggleRequired() {
+                const isFileSelected = csvFileInput.files.length > 0;
+                manualInputs.forEach(input => {
+                    isFileSelected ? input.removeAttribute('required') : input.setAttribute('required', 'required');
+                });
+            }
+            csvFileInput.addEventListener('change', toggleRequired);
+            toggleRequired();
         });
     </script>
-        <!-- Import Google Font Inter -->
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
             rel="stylesheet">
@@ -43,7 +44,6 @@
 
     <body
         class="p-4 sm:p-8 min-h-screen bg-gray-50 flex items-start justify-center font-sans">
-
         <div class="w-full max-w-7xl">
 
             <h1
@@ -52,90 +52,60 @@
             </h1>
             <p class="text-center text-gray-500 mb-8 sm:mb-12">
                 Nhập các thuộc tính hình thái học để chạy dự đoán phân loại loại
-                đậu
-                (Bean Class).
+                đậu (Bean Class).
             </p>
 
-            <!-- Khối chứa thông báo (sử dụng Jinja/Template Engine) -->
             {% if message %}
             {% set is_error = 'LỖI' in message %}
-            <!-- Message Box (Success/Alert) -->
             <div id="message-box"
                 class="relative border-l-4 p-4 mb-6 rounded-lg shadow-md
-                {% if is_error %} 
-                    bg-red-100 border-red-500 text-red-700 
-                {% else %} 
-                    bg-green-100 border-green-500 text-green-700 
-                {% endif %}"
+        {% if is_error %} bg-red-100 border-red-500 text-red-700
+        {% elif 'CẢNH BÁO' in message %} bg-yellow-100 border-yellow-500 text-yellow-700
+        {% else %} bg-green-100 border-green-500 text-green-700 {% endif %}"
                 role="alert">
                 <p class="font-bold">
-                    {% if is_error %} Lỗi Xảy Ra! {% else %} Hoàn Thành! {%
-                    endif %}
+                    {% if is_error %} Lỗi Xảy Ra!
+                    {% elif 'CẢNH BÁO' in message %} Cảnh Báo Dữ Liệu!
+                    {% else %} Hoàn Thành! {% endif %}
                 </p>
-                <p class="mt-1">{{ message }}</p>
-                <button
-                    onclick="document.getElementById('message-box').style.display='none'"
+                <p class="mt-1">{{ message | safe }}</p>
+                <button onclick="this.parentElement.style.display='none'"
                     class="absolute top-0 right-0 mt-2 mr-4 font-semibold text-lg
-                {% if is_error %} text-red-700 hover:text-red-900 {% else %} text-green-700 hover:text-green-900 {% endif %}"
-                    aria-label="Close">
-                    &times;
+                {% if is_error %} text-red-700 hover:text-red-900 {% else %} text-gray-700 hover:text-gray-900 {% endif %}">
+                    ×
                 </button>
             </div>
             {% endif %}
 
-            <!-- THAY ĐỔI: Thêm enctype="multipart/form-data" để gửi file -->
             <form method="POST" action="/" enctype="multipart/form-data"
                 class="flex flex-col md:flex-row gap-8">
 
+                <!-- PHẦN NHẬP DỮ LIỆU (giữ nguyên) -->
                 <div
                     class="md:w-3/4 bg-white shadow-xl rounded-2xl p-6 sm:p-8 border border-gray-100">
-
-                    <!-- CHỨC NĂNG Tải lên CSV -->
+                    <!-- ... (giữ nguyên phần tải CSV và nhập thủ công) ... -->
                     <div class="mb-8 border-b pb-4">
                         <label for="csv_file"
                             class="block text-xl font-semibold text-gray-800 mb-3 flex items-center">
-                            <!-- Icon File CSV (Inline SVG) -->
                             <svg xmlns="http://www.w3.org/2000/svg" width="20"
                                 height="20" viewBox="0 0 24 24" fill="none"
                                 stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round"
                                 class="lucide lucide-file-text mr-2 text-primary">
                                 <path
                                     d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
                                 <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                                <path d="M10 9H8" />
-                                <path d="M16 13H8" />
-                                <path d="M16 17H8" />
+                                <path d="M10 9H8" /><path d="M16 13H8" /><path
+                                    d="M16 17H8" />
                             </svg>
-                            Tải Lên Dữ Liệu Từ Tệp CSV (Tùy Chọn)
+                            Tải Lên Dữ Liệu Từ Tệp CSV (Ưu tiên)
                         </label>
                         <input type="file" id="csv_file" name="csv_file"
                             accept=".csv"
                             class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
                         <p class="text-xs text-gray-500 mt-2">Dữ liệu trong tệp
-                            CSV sẽ được ưu tiên nếu được tải lên. Nếu thành
-                            công, kết
-                            quả dự đoán sẽ được trả về dưới dạng tệp CSV.</p>
-
-                        <!-- THAY ĐỔI: Checkbox cho Tiêu đề CSV -->
-                        <div class="mt-3 flex items-center">
-                            <input type="checkbox" id="csv_has_header"
-                                name="csv_has_header"
-                                class="h-4 w-4 text-primary border-gray-300 rounded focus:ring-secondary"
-                                {% if data and data['csv_has_header'] == 'on'
-                                %}checked{% endif %}>
-                            <label for="csv_has_header"
-                                class="ml-2 block text-sm font-medium text-gray-700">
-                                Tệp CSV của tôi có chứa dòng tiêu đề (Header
-                                Row)
-                            </label>
-                        </div>
-                        <!-- Kết thúc Checkbox -->
-
+                            CSV sẽ được ưu tiên.</p>
                     </div>
-                    <!-- Kết thúc CHỨC NĂNG Tải lên CSV -->
 
-                    <!-- Tiêu đề cho các trường nhập thủ công -->
                     <h2
                         class="text-2xl font-semibold text-gray-800 mb-6 border-b pb-3">
                         1. Hoặc Nhập Các Thuộc Tính Hình Học (Thủ Công)
@@ -143,189 +113,219 @@
 
                     <div
                         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                        <!-- Định nghĩa các thuộc tính (sử dụng Jinja/Template Engine) -->
                         {% set fields = [
-                        ('Area', 'Diện Tích', 'mm²',
-                        'Diện tích của hạt đậu (số pixel).'),
-                        ('Perimeter', 'Chu Vi', 'mm',
-                        'Độ dài chu vi của hạt đậu.'),
-                        ('MajorAxisLength', 'Chiều Dài Trục Chính', 'mm',
-                        'Trục dài nhất có thể được vẽ từ các điểm đối diện của hạt đậu.'),
-                        ('MinorAxisLength', 'Chiều Dài Trục Phụ', 'mm',
-                        'Trục ngắn nhất vuông góc với trục chính.'),
-                        ('AspectRation', 'Tỷ Lệ Khía Cạnh', 'Tỷ lệ (Ratio)',
-                        'Tỷ lệ của MajorAxisLength trên MinorAxisLength.'),
-                        ('Eccentricity', 'Độ Lệch Tâm', 'Tỷ lệ (Ratio)',
-                        'Độ lệch tâm hình elip. Gần 1 là hình dài, gần 0 là hình tròn.'),
-                        ('ConvexArea', 'Diện Tích Lồi', 'mm²',
-                        'Diện tích của bao lồi (convex hull) của hạt đậu.'),
-                        ('EquivDiameter', 'Đường Kính Tương Đương', 'mm',
-                        'Đường kính của một vòng tròn có diện tích bằng diện tích hạt đậu.'),
-                        ('Extent', 'Mức Độ', 'Tỷ lệ (Ratio)',
-                        'Tỷ lệ của diện tích hạt đậu so với diện tích hình chữ nhật bao quanh nhỏ nhất.'),
-                        ('Solidity', 'Độ Đặc', 'Tỷ lệ (Ratio)',
-                        'Tỷ lệ của Area trên ConvexArea. Đo lường mức độ đặc của hạt.'),
-                        ('roundness', 'Độ Tròn', 'Tỷ lệ (Ratio)',
-                        'Đo lường độ tròn của hạt đậu, tính toán từ diện tích và chiều dài trục chính.'),
-                        ('Compactness', 'Độ Chặt', 'Tỷ lệ (Ratio)',
-                        'Đo lường mức độ chặt của hình dạng, tính toán dựa trên chu vi và diện tích.'),
-                        ('ShapeFactor1', 'Hệ Số Hình Dạng 1', 'Tỷ lệ (Ratio)',
-                        'Yếu tố hình dạng dựa trên Area và MajorAxisLength.'),
-                        ('ShapeFactor2', 'Hệ Số Hình Dạng 2', 'Tỷ lệ (Ratio)',
-                        'Yếu tố hình dạng dựa trên tỷ lệ MinorAxisLength / MajorAxisLength.'),
-                        ('ShapeFactor3', 'Hệ Số Hình Dạng 3', 'Tỷ lệ (Ratio)',
-                        'Yếu tố hình dạng dựa trên căn bậc hai của Area và MajorAxisLength.'),
-                        ('ShapeFactor4', 'Hệ Số Hình Dạng 4', 'Tỷ lệ (Ratio)',
-                        'Yếu tố hình dạng dựa trên EquivDiameter và MajorAxisLength.')
+                        ('Area', 'Diện Tích',
+                        'mm²','Diện tích của hạt đậu (số pixel).'),
+                        ('Perimeter', 'Chu Vi',
+                        'mm','Độ dài chu vi của hạt đậu.'),
+                        ('MajorAxisLength', 'Chiều Dài Trục Chính',
+                        'mm','Trục dài nhất có thể được vẽ từ các điểm đối diện của hạt đậu.'),
+                        ('MinorAxisLength', 'Chiều Dài Trục Phụ',
+                        'mm','Trục ngắn nhất vuông góc với trục chính.'),
+                        ('AspectRatio', 'Tỷ Lệ Khía Cạnh',
+                        'Tỷ lệ (Ratio)','Tỷ lệ của MajorAxisLength trên MinorAxisLength.'),
+                        ('Eccentricity', 'Độ Lệch Tâm',
+                        'Tỷ lệ (Ratio)','Độ lệch tâm hình elip. Gần 1 là hình dài, gần 0 là hình tròn.'),
+                        ('ConvexArea', 'Diện Tích Lồi',
+                        'mm²','Diện tích của bao lồi (convex hull) của hạt đậu.'),
+                        ('EquivDiameter', 'Đường Kính Tương Đương',
+                        'mm','Đường kính của một vòng tròn có diện tích bằng diện tích hạt đậu.'),
+                        ('Extent', 'Mức Độ',
+                        'Tỷ lệ (Ratio)','Tỷ lệ của diện tích hạt đậu so với diện tích hình chữ nhật bao quanh nhỏ nhất.'),
+                        ('Solidity', 'Độ Đặc',
+                        'Tỷ lệ (Ratio)','Tỷ lệ của Area trên ConvexArea. Đo lường mức độ đặc của hạt.'),
+                        ('roundness', 'Độ Tròn',
+                        'Tỷ lệ (Ratio)','Đo lường độ tròn của hạt đậu, tính toán từ diện tích và chiều dài trục chính.'),
+                        ('Compactness', 'Độ Chặt',
+                        'Tỷ lệ (Ratio)','Đo lường mức độ chặt của hình dạng, tính toán dựa trên chu vi và diện tích.'),
+                        ('ShapeFactor1', 'Hệ Số Hình Dạng 1',
+                        'Tỷ lệ (Ratio)','Yếu tố hình dạng dựa trên Area và MajorAxisLength.'),
+                        ('ShapeFactor2', 'Hệ Số Hình Dạng 2',
+                        'Tỷ lệ (Ratio)','Yếu tố hình dạng dựa trên tỷ lệ MinorAxisLength / MajorAxisLength.'),
+                        ('ShapeFactor3', 'Hệ Số Hình Dạng 3',
+                        'Tỷ lệ (Ratio)','Yếu tố hình dạng dựa trên căn bậc hai của Area và MajorAxisLength.'),
+                        ('ShapeFactor4', 'Hệ Số Hình Dạng 4',
+                        'Tỷ lệ (Ratio)','Yếu tố hình dạng dựa trên EquivDiameter và MajorAxisLength.'),
+                        ('ShapeFactor5', 'Hệ Số Hình Dạng 5',
+                        'Tỷ lệ (Ratio)','Yếu tố hình dạng bổ sung.')
                         ] %}
 
-                        {% for name, label, unit, tooltip_text in fields %}
-                        <!-- Bắt đầu div cha với class group để kích hoạt hover -->
+                        {% for field in fields %}
+                        {% set name = field[0] %}
                         <div class="group relative">
                             <label for="{{ name }}"
                                 class="flex items-center text-sm font-medium text-gray-700 mb-1">
-                                <!-- Hiển thị tên tiếng Anh (theo yêu cầu) -->
                                 {{ name }}
-
-                                <!-- Tooltip Trigger -->
                                 <span
                                     class="ml-1 relative inline-block cursor-help">
-                                    <!-- Help Circle Icon (Inline SVG) -->
                                     <svg xmlns="http://www.w3.org/2000/svg"
                                         width="16" height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor"
-                                        stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        class="lucide lucide-help-circle text-gray-400 hover:text-secondary transition duration-150">
+                                        viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2"
+                                        class="lucide lucide-help-circle text-gray-400 hover:text-secondary">
                                         <circle cx="12" cy="12" r="10" />
                                         <path
                                             d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
                                         <path d="M12 17h.01" />
                                     </svg>
-
-                                    <!-- Tooltip Content -->
                                     <span
-                                        class="absolute z-20 w-64 p-3 mt-1 -ml-32 left-1/2 text-xs text-white bg-gray-800/95 rounded-lg shadow-xl 
-                                                                        opacity-0 invisible transition-all duration-300 transform translate-y-2 
-                                                                        group-hover:opacity-100 group-hover:visible group-hover:translate-y-0">
-                                        <!-- Thêm tên tiếng Việt và Đơn vị vào tooltip -->
+                                        class="absolute z-20 w-64 p-3 mt-1 -ml-32 left-1/2 text-xs text-white bg-gray-800/95 rounded-lg shadow-xl opacity-0 invisible transition-all duration-300 transform translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0">
                                         <span
                                             class="font-bold block mb-1 text-primary">{{
-                                            label }} ({{ unit }})</span>
-                                        {{ tooltip_text }}
+                                            field[1] }} ({{ field[2] }})</span>
+                                        {{ field[3] }}
                                     </span>
                                 </span>
                             </label>
                             <input type="number" step="any" id="{{ name }}"
                                 name="{{ name }}"
-                                placeholder="Nhập giá trị..."
+                                placeholder="Nhập giá trị..." min="0" required
                                 value="{{ data[name] if data and data[name] is not none else '' }}"
-                                min="0"
-                                {% if name not in ['csv_file'] %} required {%
-                                endif %}
-                                class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary transition duration-150 ease-in-out hover:border-secondary">
+                                class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary hover:border-secondary">
                         </div>
                         {% endfor %}
-
                     </div>
                 </div>
 
+                <!-- PHẦN KẾT QUẢ -->
                 <div class="md:w-1/4 flex flex-col space-y-8">
-
-                    <!-- Hộp 2: Chọn Mô Hình -->
                     <div
                         class="bg-white shadow-xl rounded-2xl p-6 border border-gray-100">
                         <h2
                             class="text-2xl font-semibold text-gray-800 mb-4 border-b pb-3">2.
                             Lựa Chọn Mô Hình</h2>
-
                         <label for="model_name"
-                            class="block text-sm font-medium text-gray-700 mb-2">
-                            Chọn Mô Hình Dự Đoán:
-                        </label>
+                            class="block text-sm font-medium text-gray-700 mb-2">Chọn
+                            Mô Hình Dự Đoán:</label>
                         <select id="model_name" name="model_name" required
-                            class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary transition duration-150 ease-in-out">
-                            <option value="KNeighbors" {% if data and
-                                data['model_name'] == 'KNeighbors' %}selected{%
+                            class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary">
+                            <option value="KNeighbors" {% if
+                                data['model_name']=='KNeighbors' %}selected{%
                                 endif %}>K Láng Giềng Gần Nhất (KNN)</option>
-                            <option value="NaiveBayes" {% if data and
-                                data['model_name'] == 'NaiveBayes' %}selected{%
+                            <option value="NaiveBayes" {% if
+                                data['model_name']=='NaiveBayes' %}selected{%
                                 endif %}>Naive Bayes</option>
-                            <option value="LogisticRegression" {% if data and
-                                data['model_name'] == 'LogisticRegression'
+                            <option value="LogisticRegression" {% if
+                                data['model_name']=='LogisticRegression'
                                 %}selected{% endif %}>Hồi quy Logistic</option>
-                            <option value="RandomForest" {% if data and
-                                data['model_name'] == 'RandomForest'
-                                %}selected{% endif %}>Rừng Ngẫu Nhiên</option>
-                            <option value="SupportVectorMachine" {% if data and
-                                data['model_name'] == 'SupportVectorMachine'
+                            <option value="RandomForest" {% if
+                                data['model_name']=='RandomForest' %}selected{%
+                                endif %}>Rừng Ngẫu Nhiên</option>
+                            <option value="SupportVectorMachine" {% if
+                                data['model_name']=='SupportVectorMachine'
                                 %}selected{% endif %}>Máy Vector Hỗ Trợ
                                 (SVM)</option>
                         </select>
-
-                        <!-- Nút Gửi/Dự Đoán -->
                         <button type="submit"
-                            class="w-full mt-6 px-4 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg hover:bg-secondary focus:outline-none focus:ring-4 focus:ring-secondary focus:ring-opacity-50 transition duration-300 transform hover:scale-[1.01] flex items-center justify-center">
+                            class="w-full mt-6 px-4 py-3 bg-primary text-white font-semibold rounded-xl shadow-lg hover:bg-secondary transition flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round"
+                                stroke="currentColor" viewBox="0 0 24 24"><path
+                                    stroke-linecap="round"
                                     stroke-linejoin="round" stroke-width="2"
-                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                             Chạy Dự Đoán
                         </button>
                     </div>
 
-                    <!-- Hộp 3: Kết Quả Dự Đoán -->
                     <div
                         class="bg-white shadow-xl rounded-2xl p-6 border border-gray-100 flex-grow">
                         <h2
                             class="text-2xl font-semibold text-gray-800 mb-4 border-b pb-3">3.
                             Kết Quả Dự Đoán</h2>
 
-                        {% if prediction_result %}
+                        {% if is_csv_upload_success %}
+                        <div class="space-y-4">
+                            <p class="text-sm text-gray-600">Đã sử dụng mô
+                                hình:</p>
+                            <p class="text-xl font-bold text-primary">{{
+                                data['model_name'] }}</p>
+                            <p
+                                class="text-sm text-gray-600 border-t pt-4 mt-4">Kết
+                                quả:</p>
+                            <button type="button" onclick="triggerDownload()"
+                                class="w-full px-4 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-lg hover:bg-green-700 transition flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"><path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Tải Lại Kết Quả CSV
+                            </button>
+                        </div>
+                        {% elif prediction_result %}
                         <div class="space-y-4">
                             <p class="text-sm text-gray-600">Mô hình đã sử
                                 dụng:</p>
                             <p class="text-xl font-bold text-primary">{{
                                 data['model_name'] }}</p>
-
                             <p
                                 class="text-sm text-gray-600 border-t pt-4 mt-4">Kết
-                                quả dự đoán <span class="text-2xl">👉</span></p>
-
-                            <!-- HIỂN THỊ KẾT QUẢ DỰ ĐOÁN (Trường hợp nhập tay thành công) -->
+                                quả dự đoán:</p>
                             <p
-                                class="text-3xl font-extrabold 
-                            {% if 'LỖI' in prediction_result %} text-red-600 bg-red-50 {% else %} text-green-600 bg-green-50 {% endif %} 
-                            p-3 rounded-xl text-center">
+                                class="text-3xl font-extrabold text-green-600 bg-green-50 p-3 rounded-xl text-center">
                                 {{ prediction_result }}
                             </p>
                         </div>
                         {% else %}
-                        <!-- TRƯỜNG HỢP BAN ĐẦU HOẶC SAU KHI TẢI XUỐNG CSV THÀNH CÔNG -->
                         <p class="text-gray-500 italic">
                             Kết quả dự đoán sẽ hiển thị ở đây sau khi bạn nhập
-                            dữ liệu
-                            thủ công và bấm "Chạy Dự Đoán".
-                            <br><br>
+                            dữ liệu thủ công và bấm "Chạy Dự Đoán".<br><br>
                             *Lưu ý: Nếu bạn sử dụng tệp CSV thành công, kết quả
-                            sẽ
-                            được tải xuống trực tiếp dưới dạng tệp mới và không
-                            hiển
-                            thị trên giao diện này.
+                            sẽ tự động tải xuống.
                         </p>
                         {% endif %}
                     </div>
                 </div>
-
             </form>
-
         </div>
 
-    </body>
+        <!-- TỰ ĐỘNG TẢI XUỐNG KHI CÓ CSV -->
+        {% if auto_download and csv_base64 %}
+        <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const csvData = "{{ csv_base64 | safe }}";
+        const filename = "{{ download_filename | safe }}";
 
+        const byteCharacters = atob(csvData);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'text/csv;charset=utf-8;' });
+
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+    // Hàm tải lại
+    function triggerDownload() {
+        const csvData = "{{ csv_base64 | safe }}";
+        const filename = "{{ download_filename | safe }}";
+        const byteCharacters = atob(csvData);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+        {% endif %}
+
+    </body>
 </html>

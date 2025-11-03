@@ -2,84 +2,128 @@
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.decomposition import PCA
+from typing import List, Tuple, Union
 
-class CSVPreprocessor:
-    def __init__(self, n_components: int = 5):
-        """
-        Khởi tạo bộ tiền xử lý CSV.
-        :param n_components: số thành phần chính cho PCA.
-        """
-        self.n_components = n_components
+
+class DataPreprocessor:
+    def __init__(self):
         self.scaler = MinMaxScaler()
-        self.pca = PCA(n_components=n_components)
-        self.columns_before_pca = None
+        self.fitted = False
+        self.feature_names = None
 
-    def _convert_numeric_columns(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Chuyển các cột có kiểu dữ liệu là chuỗi số (string) sang kiểu số thực (float/int).
-        """
+    def fit(self, df: pd.DataFrame, feature_names: List[str]):
+        df = df.copy()
+        df.columns = [str(col).strip() for col in df.columns]
+
+        missing = [col for col in feature_names if col not in df.columns]
+        if missing:
+            raise ValueError(f"Thiếu cột khi fit: {missing}")
+
+        df_selected = df[feature_names].copy()
+
+        # Chuẩn hóa tất cả cột thành số (hỗ trợ dấu phẩy)
+        for col in df_selected.columns:
+            df_selected[col] = (
+                df_selected[col]
+                .astype(str)
+                .str.replace(',', '.', regex=False)
+                .replace(['', 'nan', '<NA>'], np.nan)
+            )
+            df_selected[col] = pd.to_numeric(df_selected[col], errors='coerce')
+
+        df_selected = df_selected.dropna()
+        if df_selected.empty:
+            raise ValueError("Không có dữ liệu hợp lệ sau khi chuẩn hóa để fit scaler.")
+
+        self.scaler.fit(df_selected)
+        self.feature_names = feature_names
+        self.fitted = True
+
+    def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Chuẩn hóa giống hệt fit()"""
+        df = df.copy()
+        df.columns = [str(col).strip() for col in df.columns]
+        df = df[self.feature_names].copy()
+
         for col in df.columns:
-            # Nếu cột là object nhưng có thể chuyển thành số
-            if df[col].dtype == object:
-                try:
-                    df[col] = pd.to_numeric(df[col], errors='raise')
-                except Exception:
-                    pass  # bỏ qua nếu không thể chuyển
+            df[col] = (
+                df[col]
+                .astype(str)
+                .str.replace(',', '.', regex=False)
+                .replace(['', 'nan', '<NA>'], np.nan)
+            )
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        df = df.dropna()
         return df
 
-    def _handle_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Loại bỏ các hàng null nếu ít, nếu nhiều thì thay bằng median.
-        """
-        for col in df.columns:
-            null_ratio = df[col].isnull().mean()
-            if null_ratio == 0:
-                continue
-            elif null_ratio < 0.1:
-                # Nếu ít hơn 10% giá trị bị thiếu → xóa hàng đó
-                df = df.dropna(subset=[col])
-            else:
-                # Nếu nhiều hơn → thay thế bằng median
-                if pd.api.types.is_numeric_dtype(df[col]):
-                    df[col] = df[col].fillna(df[col].median())
-                else:
-                    df[col] = df[col].fillna(df[col].mode()[0] if not df[col].mode().empty else "")
-        return df
+    def transform_single(self, data: dict) -> list:
+        if not self.fitted:
+            raise RuntimeError("Scaler chưa được fit!")
 
-    def _scale_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Chuẩn hóa dữ liệu số bằng MinMaxScaler.
-        """
-        numeric_cols = df.select_dtypes(include=[np.number]).columns
-        df[numeric_cols] = self.scaler.fit_transform(df[numeric_cols])
-        return df
+        df = pd.DataFrame([data])
+        df = self._preprocess_df(df)
 
-    def _apply_pca(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Giảm chiều dữ liệu bằng PCA.
-        """
-        numeric_cols = df.select_dtypes(include=[np.number]).columns
-        self.columns_before_pca = numeric_cols
-        pca_result = self.pca.fit_transform(df[numeric_cols])
-        pca_df = pd.DataFrame(
-            pca_result,
-            columns=[f"PCA_{i+1}" for i in range(self.n_components)],
-            index=df.index
+        if df.empty:
+            raise ValueError("Dữ liệu đầu vào không hợp lệ sau xử lý.")
+
+        scaled = self.scaler.transform(df).flatten().tolist()
+        return scaled
+
+    def transform_csv(self, df: pd.DataFrame) -> pd.DataFrame:
+        if not self.fitted:
+            raise RuntimeError("Scaler chưa được fit!")
+
+        df = self._preprocess_df(df)
+
+        if df.empty:
+            raise ValueError("Không có dữ liệu hợp lệ trong CSV sau xử lý.")
+
+        scaled = self.scaler.transform(df)
+        return pd.DataFrame(scaled, columns=self.feature_names)
+
+
+def prepare_csv_df(df: pd.DataFrame, feature_names: List[str]) -> pd.DataFrame:
+    df_out = df.copy()
+    df_out.columns = [str(col).strip() for col in df_out.columns]
+
+    missing = [col for col in feature_names if col not in df_out.columns]
+    if missing:
+        raise ValueError(f"Thiếu các cột bắt buộc: {missing}")
+
+    df_out = df_out[feature_names].copy()
+
+    # Chuẩn hóa giống fit
+    for col in df_out.columns:
+        df_out[col] = (
+            df_out[col]
+            .astype(str)
+            .str.replace(',', '.', regex=False)
+            .replace(['', 'nan', '<NA>'], np.nan)
         )
-        # Kết hợp phần không phải số với kết quả PCA
-        non_numeric = df.drop(columns=numeric_cols)
-        return pd.concat([pca_df, non_numeric], axis=1)
+        df_out[col] = pd.to_numeric(df_out[col], errors='coerce')
 
-    def preprocess_csv(self, file_path: str) -> pd.DataFrame:
-        """
-        Tiền xử lý file CSV: làm sạch, chuẩn hóa và giảm chiều.
-        """
-        df = pd.read_csv(file_path)
+    df_out = df_out.dropna()
+    return df_out
 
-        df = self._convert_numeric_columns(df)
-        df = self._handle_missing_values(df)
-        df = self._scale_data(df)
-        df = self._apply_pca(df)
 
-        return df
+def validate_single_input(data: dict, feature_names: List[str]) -> Tuple[Union[list, None], Union[str, None]]:
+    cleaned_data = {str(k).strip(): data.get(k) for k in feature_names}
+    numeric_data = []
+    error = None
+
+    for key in feature_names:
+        value = cleaned_data.get(key)
+        if value is None or str(value).strip() == '':
+            error = f"Dữ liệu nhập bị thiếu: '{key}'"
+            return None, error
+
+        try:
+            processed_value = str(value).strip().replace(',', '.')
+            num = float(processed_value)
+            numeric_data.append(num)
+        except ValueError:
+            error = f"Dữ liệu nhập không hợp lệ: '{key}' phải là một số."
+            return None, error
+
+    return numeric_data, error

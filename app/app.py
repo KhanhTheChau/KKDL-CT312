@@ -1,145 +1,141 @@
-from flask import Flask, render_template, request, redirect, url_for, Response
-import pickle 
+# app.py
+from flask import Flask, render_template, request, send_file, redirect, url_for
 import pandas as pd
-import io
+import numpy as np
+import pickle
 import os
+import io
+import base64
+from preprocess import DataPreprocessor, prepare_csv_df, validate_single_input
 
-# Import lớp tiền xử lý
-from preprocess import CSVPreprocessor
-
-# ====================== CẤU HÌNH ======================
-PORT = 5000
-TRAIN_DIR = '../train'
 app = Flask(__name__)
+app.secret_key = 'bean_prediction_secret_2025'
 
-BEAN_CLASSES = [
-    "Seker (Đậu Đường)",
-    "Barbunya (Đậu Thổ Nhĩ Kỳ)",
-    "Bombay (Đậu Bombay)",
-    "Cali (Đậu Calypso)",
-    "Horoz (Đậu Horoz)",
-    "Sira (Đậu Sira)",
-    "Dermason (Đậu Dermason)"
+# === CẤU HÌNH ===
+MODEL_DIR = './train/models'
+TRAIN_CSV_PATH = './train/data/X_train.csv'
+
+# Sửa lỗi chính tả: AspectRation → AspectRatio
+FEATURE_NAMES = [
+    'Area', 'Perimeter', 'MajorAxisLength', 'MinorAxisLength', 'AspectRation',
+    'Eccentricity', 'ConvexArea', 'EquivDiameter', 'Extent', 'Solidity',
+    'roundness', 'Compactness', 'ShapeFactor1', 'ShapeFactor2',
+    'ShapeFactor3', 'ShapeFactor4', 'ShapeFactor5'
 ]
 
-MODEL_PATHS = {
+# Load models
+models = {}
+model_mapping = {
     'KNeighbors': 'knn_model.pkl',
     'NaiveBayes': 'naive_bayes_model.pkl',
     'LogisticRegression': 'logistic_regression_model.pkl',
     'RandomForest': 'random_forest_model.pkl',
-    'SupportVectorMachine': 'svm_model.pkl',
+    'SupportVectorMachine': 'svm_model.pkl'
 }
 
-FEATURE_NAMES = [
-    'Area', 'Perimeter', 'MajorAxisLength', 'MinorAxisLength', 'AspectRation', 
-    'Eccentricity', 'ConvexArea', 'EquivDiameter', 'Extent', 'Solidity', 
-    'roundness', 'Compactness', 'ShapeFactor1', 'ShapeFactor2', 'ShapeFactor3', 
-    'ShapeFactor4'
-]
+for key, filename in model_mapping.items():
+    path = os.path.join(MODEL_DIR, filename)
+    if os.path.exists(path):
+        with open(path, 'rb') as f:
+            models[key] = pickle.load(f)
+        print(f"[OK] Đã tải mô hình: {key}")
+    else:
+        print(f"[CẢNH BÁO] Không tìm thấy mô hình: {path}")
 
-# ====================== DỰ ĐOÁN ======================
-def predict_bean_class(data, model_name):
-    model_filename = MODEL_PATHS.get(model_name)
-    if not model_filename:
-        return f"LỖI: KHÔNG TÌM THẤY TỆP MÔ HÌNH '{model_name}'"
+# Khởi tạo preprocessor
+preprocessor = DataPreprocessor()
 
-    full_model_path = os.path.join(TRAIN_DIR, model_filename)
-
-    # Chỉ lấy 16 thuộc tính cần thiết
-    numeric_data = [float(data[f]) for f in FEATURE_NAMES if f in data]
-
-    if len(numeric_data) != 16:
-        return "LỖI: THIẾU DỮ LIỆU ĐẦU VÀO (Cần 16 thuộc tính)"
-
+# Fit scaler từ train.csv
+if os.path.exists(TRAIN_CSV_PATH):
     try:
-        with open(full_model_path, 'rb') as f:
-            model = pickle.load(f)
-        prediction_result = model.predict([numeric_data])[0]
-
-        # Nếu mô hình trả int index, dùng BEAN_CLASSES
-        if isinstance(prediction_result, int) and 0 <= prediction_result < len(BEAN_CLASSES):
-            return BEAN_CLASSES[prediction_result]
-        return str(prediction_result)
-    except FileNotFoundError:
-        return f"LỖI: TỆP MÔ HÌNH '{full_model_path}' KHÔNG TỒN TẠI"
+        train_df = pd.read_csv(TRAIN_CSV_PATH)
+        preprocessor.fit(train_df, FEATURE_NAMES)
+        print(f"[OK] Scaler đã fit với {len(FEATURE_NAMES)} cột.")
     except Exception as e:
-        return f"LỖI DỰ ĐOÁN: {str(e)}"
+        print(f"[LỖI] Không thể fit scaler: {e}")
+else:
+    print(f"[CẢNH BÁO] Không tìm thấy {TRAIN_CSV_PATH}. Scaler chưa được fit!")
 
-# ====================== GIAO DIỆN FLASK ======================
+
 @app.route('/', methods=['GET', 'POST'])
-def prediction_interface():
-    prediction_result = None
-    data = None
+def index():
     message = None
-    model_name = 'RandomForest'
-    df = None
+    prediction_result = None
+    data = {'model_name': 'RandomForest'}
+    is_csv_upload_success = False
+    csv_base64 = None
+    auto_download = False
+    download_filename = 'ket_qua_du_doan_hat_dau.csv'
 
     if request.method == 'POST':
         model_name = request.form.get('model_name', 'RandomForest')
-        csv_has_header = request.form.get('csv_has_header') == 'on'
+        data['model_name'] = model_name
+        selected_model = models.get(model_name)
+
+        if not selected_model:
+            message = f"<strong>LỖI:</strong> Mô hình '{model_name}' chưa được tải."
+            return render_template('index.html', message=message, data=data)
+
         csv_file = request.files.get('csv_file')
-        input_features = {}
-        data_source = "Thủ công"
-
-        # ---------------------- CSV UPLOAD ----------------------
-        if csv_file and csv_file.filename and csv_file.filename.endswith('.csv'):
+        if csv_file and csv_file.filename.endswith('.csv'):
             try:
-                # Đọc file CSV từ người dùng
-                csv_data = csv_file.read().decode('utf-8')
-                if csv_has_header:
-                    df = pd.read_csv(io.StringIO(csv_data))
+                csv_df = pd.read_csv(csv_file)
+                processed_df = prepare_csv_df(csv_df, FEATURE_NAMES)
+
+                if processed_df.empty:
+                    message = "<strong>CẢNH BÁO:</strong> Tệp CSV không có dữ liệu hợp lệ (thiếu cột hoặc không phải số)."
                 else:
-                    df = pd.read_csv(io.StringIO(csv_data), header=None, names=FEATURE_NAMES)
+                    X_scaled = preprocessor.transform_csv(processed_df)
+                    predictions = selected_model.predict(X_scaled)
+                    result_df = processed_df.copy()
+                    result_df['Class_Predicted'] = predictions
 
-                if df.empty:
-                    message = "LỖI: Tệp CSV trống."
-                elif not all(f in df.columns for f in FEATURE_NAMES):
-                    missing = [f for f in FEATURE_NAMES if f not in df.columns]
-                    message = f"LỖI: Thiếu cột bắt buộc: {', '.join(missing)}"
-                else:
-                    # TIỀN XỬ LÝ CSV
-                    preprocessor = CSVPreprocessor(n_components=5)
-                    df_processed = preprocessor.preprocess_csv(io.StringIO(csv_data))
-
-                    # Dùng hàng đầu tiên của file đã tiền xử lý để dự đoán
-                    first_row_data = df_processed.iloc[0].to_dict()
-                    input_features = {k: str(v) for k, v in first_row_data.items() if k in FEATURE_NAMES}
-                    data_source = "CSV (đã tiền xử lý)"
-            except Exception as e:
-                message = f"LỖI XỬ LÝ CSV: {str(e)}"
-
-        # ---------------------- INPUT FORM ----------------------
-        if not input_features and 'LỖI' not in str(message):
-            exclude_keys = ['model_name', 'csv_file', 'csv_has_header']
-            input_features = {k: v for k, v in request.form.items() if k not in exclude_keys}
-            data_source = "Thủ công"
-
-        # ---------------------- DỰ ĐOÁN ----------------------
-        if input_features:
-            try:
-                prediction_result = predict_bean_class(input_features, model_name)
-                if "LỖI" in prediction_result:
-                    message = f"Lỗi dự đoán ({data_source}): {prediction_result}"
-                elif data_source.startswith("CSV") and df is not None:
-                    df['Predicted_Class'] = ''
-                    df.loc[0, 'Predicted_Class'] = prediction_result
+                    # Tạo CSV và mã hóa base64
                     output = io.StringIO()
-                    df.to_csv(output, index=False)
-                    response = Response(output.getvalue(), mimetype="text/csv")
-                    response.headers["Content-Disposition"] = "attachment; filename=bean_prediction_result.csv"
-                    return response
-                else:
-                    message = f"Dự đoán thành công ({data_source}) bằng mô hình {model_name}: {prediction_result}"
+                    result_df.to_csv(output, index=False)
+                    csv_str = output.getvalue()
+                    csv_base64 = base64.b64encode(csv_str.encode('utf-8')).decode('utf-8')
+                    output.close()
+
+                    is_csv_upload_success = True
+                    auto_download = True  # Kích hoạt tự động tải
+                    message = f"<strong>THÀNH CÔNG:</strong> Đã xử lý <strong>{len(result_df)}</strong> mẫu. Tải xuống tự động..."
+
             except Exception as e:
-                message = f"Lỗi xử lý dữ liệu ({data_source}): {str(e)}"
-                prediction_result = "LỖI DỰ ĐOÁN"
+                message = f"<strong>LỖI:</strong> Xử lý CSV thất bại: {str(e)}"
+        else:
+            input_data = {feat: request.form.get(feat) for feat in FEATURE_NAMES}
+            numeric_data, error = validate_single_input(input_data, FEATURE_NAMES)
 
-    if data is None:
-        data = {'model_name': model_name}
-    data['csv_has_header'] = request.form.get('csv_has_header', 'on')
+            if error:
+                message = f"<strong>LỖI:</strong> {error}"
+            else:
+                try:
+                    scaled_input = preprocessor.transform_single(input_data)
+                    prediction = selected_model.predict([scaled_input])[0]
+                    prediction_result = str(prediction)
+                    message = "<strong>THÀNH CÔNG:</strong> Dự đoán hoàn tất!"
+                except Exception as e:
+                    message = f"<strong>LỖI:</strong> Dự đoán thất bại: {str(e)}"
 
-    return render_template('index.html', message=message, data=data, prediction_result=prediction_result)
+    template_data = {
+        'message': message,
+        'prediction_result': prediction_result,
+        'data': data,
+        'is_csv_upload_success': is_csv_upload_success,
+        'csv_base64': csv_base64,
+        'auto_download': auto_download,
+        'download_filename': download_filename
+    }
 
-# ====================== MAIN ======================
+    return render_template('index.html', **template_data)
+
+
+# XÓA route /download vì không cần nữa (tự động tải bằng JS)
+# @app.route('/download', methods=['POST'])  → ĐÃ XÓA
+
+
 if __name__ == '__main__':
-    app.run(debug=True, port=PORT)
+    os.makedirs('./train/data', exist_ok=True)
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    app.run(debug=True)
