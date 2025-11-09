@@ -27,7 +27,7 @@ models = {}
 model_mapping = {
     'KNeighbors': 'knn_model.pkl',
     'NaiveBayes': 'naive_bayes_model.pkl',
-    'LogisticRegression': 'logistic_regression_model.pkl',
+    # 'LogisticRegression': 'logistic_regression_model.pkl',
     'RandomForest': 'random_forest_model.pkl',
     'SupportVectorMachine': 'svm_model.pkl'
 }

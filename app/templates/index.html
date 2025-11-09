@@ -36,7 +36,7 @@
             csvFileInput.addEventListener('change', toggleRequired);
             toggleRequired();
         });
-    </script>
+        </script>
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
             rel="stylesheet">
@@ -80,7 +80,6 @@
             <form method="POST" action="/" enctype="multipart/form-data"
                 class="flex flex-col md:flex-row gap-8">
 
-                <!-- PHẦN NHẬP DỮ LIỆU (giữ nguyên) -->
                 <div
                     class="md:w-3/4 bg-white shadow-xl rounded-2xl p-6 sm:p-8 border border-gray-100">
                     <div class="mb-8 border-b pb-4">
@@ -114,39 +113,39 @@
                         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {% set fields = [
                         ('Area', 'Diện Tích',
-                        'mm²','Diện tích của hạt đậu (số pixel).'),
+                        '','Diện tích của hạt đậu (số pixel).'),
                         ('Perimeter', 'Chu Vi',
-                        'mm','Độ dài chu vi của hạt đậu.'),
+                        '','Độ dài chu vi của hạt đậu.'),
                         ('MajorAxisLength', 'Chiều Dài Trục Chính',
-                        'mm','Trục dài nhất có thể được vẽ từ các điểm đối diện của hạt đậu.'),
+                        '','Trục dài nhất có thể được vẽ từ các điểm đối diện của hạt đậu.'),
                         ('MinorAxisLength', 'Chiều Dài Trục Phụ',
-                        'mm','Trục ngắn nhất vuông góc với trục chính.'),
-                        ('AspectRatio', 'Tỷ Lệ Khía Cạnh',
-                        'Tỷ lệ (Ratio)','Tỷ lệ của MajorAxisLength trên MinorAxisLength.'),
+                        '','Trục ngắn nhất vuông góc với trục chính.'),
+                        ('AspectRation', 'Tỷ Lệ Khía Cạnh',
+                        '','Tỷ lệ của MajorAxisLength trên MinorAxisLength.'),
                         ('Eccentricity', 'Độ Lệch Tâm',
-                        'Tỷ lệ (Ratio)','Độ lệch tâm hình elip. Gần 1 là hình dài, gần 0 là hình tròn.'),
+                        '','Độ lệch tâm hình elip. Gần 1 là hình dài, gần 0 là hình tròn.'),
                         ('ConvexArea', 'Diện Tích Lồi',
-                        'mm²','Diện tích của bao lồi (convex hull) của hạt đậu.'),
+                        '','Diện tích của bao lồi (convex hull) của hạt đậu.'),
                         ('EquivDiameter', 'Đường Kính Tương Đương',
-                        'mm','Đường kính của một vòng tròn có diện tích bằng diện tích hạt đậu.'),
+                        '','Đường kính của một vòng tròn có diện tích bằng diện tích hạt đậu.'),
                         ('Extent', 'Mức Độ',
-                        'Tỷ lệ (Ratio)','Tỷ lệ của diện tích hạt đậu so với diện tích hình chữ nhật bao quanh nhỏ nhất.'),
+                        '','Tỷ lệ của diện tích hạt đậu so với diện tích hình chữ nhật bao quanh nhỏ nhất.'),
                         ('Solidity', 'Độ Đặc',
-                        'Tỷ lệ (Ratio)','Tỷ lệ của Area trên ConvexArea. Đo lường mức độ đặc của hạt.'),
+                        '','Tỷ lệ của Area trên ConvexArea. Đo lường mức độ đặc của hạt.'),
                         ('roundness', 'Độ Tròn',
-                        'Tỷ lệ (Ratio)','Đo lường độ tròn của hạt đậu, tính toán từ diện tích và chiều dài trục chính.'),
+                        '','Đo lường độ tròn của hạt đậu, tính toán từ diện tích và chiều dài trục chính.'),
                         ('Compactness', 'Độ Chặt',
-                        'Tỷ lệ (Ratio)','Đo lường mức độ chặt của hình dạng, tính toán dựa trên chu vi và diện tích.'),
+                        '','Đo lường mức độ chặt của hình dạng, tính toán dựa trên chu vi và diện tích.'),
                         ('ShapeFactor1', 'Hệ Số Hình Dạng 1',
-                        'Tỷ lệ (Ratio)','Yếu tố hình dạng dựa trên Area và MajorAxisLength.'),
+                        '','Yếu tố hình dạng dựa trên Area và MajorAxisLength.'),
                         ('ShapeFactor2', 'Hệ Số Hình Dạng 2',
-                        'Tỷ lệ (Ratio)','Yếu tố hình dạng dựa trên tỷ lệ MinorAxisLength / MajorAxisLength.'),
+                        '','Yếu tố hình dạng dựa trên tỷ lệ MinorAxisLength / MajorAxisLength.'),
                         ('ShapeFactor3', 'Hệ Số Hình Dạng 3',
-                        'Tỷ lệ (Ratio)','Yếu tố hình dạng dựa trên căn bậc hai của Area và MajorAxisLength.'),
+                        '','Yếu tố hình dạng dựa trên căn bậc hai của Area và MajorAxisLength.'),
                         ('ShapeFactor4', 'Hệ Số Hình Dạng 4',
-                        'Tỷ lệ (Ratio)','Yếu tố hình dạng dựa trên EquivDiameter và MajorAxisLength.'),
+                        '','Yếu tố hình dạng dựa trên EquivDiameter và MajorAxisLength.'),
                         ('ShapeFactor5', 'Hệ Số Hình Dạng 5',
-                        'Tỷ lệ (Ratio)','Yếu tố hình dạng bổ sung.')
+                        '','Yếu tố hình dạng bổ sung.')
                         ] %}
 
                         {% for field in fields %}
@@ -168,10 +167,11 @@
                                         <path d="M12 17h.01" />
                                     </svg>
                                     <span
-                                        class="absolute z-20 w-64 p-3 mt-1 -ml-32 left-1/2 text-xs text-white bg-gray-800/95 rounded-lg shadow-xl opacity-0 invisible transition-all duration-300 transform translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0">
+                                        class="absolute z-20 w-80 p-3 -top-10 -left-20 text-xs text-white bg-gray-800/95 rounded-lg shadow-xl opacity-0 invisible transition-all duration-300 transform translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0">
                                         <span
                                             class="font-bold block mb-1 text-primary">{{
-                                            field[1] }} ({{ field[2] }})</span>
+                                            field[1] }}{% if field[2] %} ({{
+                                            field[2] }}){% endif %}</span>
                                         {{ field[3] }}
                                     </span>
                                 </span>
@@ -186,7 +186,6 @@
                     </div>
                 </div>
 
-                <!-- PHẦN KẾT QUẢ -->
                 <div class="md:w-1/4 flex flex-col space-y-8">
                     <div
                         class="bg-white shadow-xl rounded-2xl p-6 border border-gray-100">
@@ -204,9 +203,6 @@
                             <option value="NaiveBayes" {% if
                                 data['model_name']=='NaiveBayes' %}selected{%
                                 endif %}>Naive Bayes</option>
-                            <option value="LogisticRegression" {% if
-                                data['model_name']=='LogisticRegression'
-                                %}selected{% endif %}>Hồi quy Logistic</option>
                             <option value="RandomForest" {% if
                                 data['model_name']=='RandomForest' %}selected{%
                                 endif %}>Rừng Ngẫu Nhiên</option>
@@ -279,7 +275,6 @@
             </form>
         </div>
 
-        <!-- TỰ ĐỘNG TẢI XUỐNG KHI CÓ CSV -->
         {% if auto_download and csv_base64 %}
         <script>
     document.addEventListener('DOMContentLoaded', () => {
